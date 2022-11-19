@@ -1,4 +1,3 @@
-^{:auto-bundle :webpack
-  :watch-dirs ["src" "test"]}
+^{:auto-bundle :webpack}
 {:main            spider.main
  :target          :bundle}
