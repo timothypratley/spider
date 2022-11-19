@@ -2,7 +2,20 @@
 
 = Spider
 
+A creepy
+https://timothypratley.github.io/spider/[spider animation]
+
+Inspired by https://chouser.us/spider/spider03.svg[chouser/spider]
+https://github.com/Chouser/chouser.github.io/blob/master/spider/animate.js[src]
 
 == Usage
 
-== Why aren't you using ClojureScript?
+See link:Makefile[Makefile]
+
+== JavaScript?
+
+link:resources/public/spider.js[spider.js]
+
+== ClojureScript?
+
+So much build configuration :cry:

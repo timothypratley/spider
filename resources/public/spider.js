@@ -100,7 +100,7 @@ var world = document.getElementById("world");
 var lastTs = performance.now();
 
 function animate(ts) {
-  var dt = (ts - lastTs)/50;
+  var dt = Math.min(1, (ts - lastTs)/50);
   lastTs = ts;
   for (child of world.children) {
     updateSpider(child, dt);

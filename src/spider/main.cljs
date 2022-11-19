@@ -88,7 +88,7 @@
 (def lastTs (js/performance.now))
 
 (defn animate [ts]
-  (let [dt (/ (- ts lastTs) 50)]
+  (let [dt (min (/ (- ts lastTs) 50) 1)]
     (set! lastTs ts)
     (doseq [child (.-children world)]
       (updateSpider child dt))
