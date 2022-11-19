@@ -2,6 +2,7 @@
 /target
 /classes
 /checkouts
+/node_modules
 pom.xml
 pom.xml.asc
 *.jar
@@ -12,3 +13,4 @@ pom.xml.asc
 .hgignore
 .hg/
 .clj-kondo/
+.lsp/

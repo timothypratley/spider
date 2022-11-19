@@ -1,0 +1,4 @@
+^{:auto-bundle :webpack
+  :watch-dirs ["src" "test"]}
+{:main            spider.test-runner
+ :target          :bundle}

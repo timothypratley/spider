@@ -1,97 +1,103 @@
-(ns spider.main)
+(ns spider.main
+  (:require ["mathjs" :as m]
+            [clojure.math :as math]))
 
-;; global data model
-;; eavt
-(defonce world (atom {}))
+(def spiderLegSockets
+  (clj->js [[0 -2] [3 -1]
+            [0.5 -1.5] [1 -1.5]
+            [0.5 1.5] [1 1.5]
+            [0 2] [3 1]]))
 
-(defn assert! [db datom]
-  (swap! db assoc-in datom true))
-(defn retract! [db datom]
-  ;; TODO: should remove empty entities as well
-  (swap! db update-in (butlast datom) dissoc (last datom)))
+(defn hiccup [tag attributes]
+  (let [e (js/document.createElementNS "http://www.w3.org/2000/svg", tag)]
+    (doseq [[k v] attributes]
+      (.setAttribute e (name k) v))
+    e))
 
-(defprotocol Animal
-  (init [this])
-  (step [this result x])
-  (complete [this result]))
-
-(defrecord Pose [translate rotate scale])
-
-(defrecord Spider [pose behavior]
-  Animal
-  (init [this])
-  (step [this result x]
-    (case behavior
-      ;"spinning" _
-      "walking" (do update-my-pose
-                    update-feet)
-      ;"running" _
-      ))
-  (complete [this result]))
-
-(def spider-leg-sockets
-  [[-1 -3] [1 -3]
-   [-2 -2] [2 -2]
-   [-2 2] [2 2]
-   [-1 3] [1 3]])
-
-(def spider-legs
-  (map (fn [[x y]]
-         {:socket      [x y]
-          :hinges    [[] []]
-          :appendage {:tr    [0 0]
-                      :down? true}})))
-
-(defn add-legs [s]
-  (doseq [leg (into [] spider-legs spider-leg-sockets)]
-    (.addChild s
-               (doto
-                 (js/document.createElement "path")
-                 (.setAttribute "d" "")
-                 (-> .-socket #js [])
-                 ))))
-
-(defn spi []
-  (doto
-    (js/document.createElement "g")
-    (.setAttribute "transform")
-    (-> .-translate (set! #js [0 0]))
-    (-> .-rotate (set! #js [0]))
-    (-> .-v (set! #js [0 1]))
-    (.addChild)
-    )
-  {:id       (rand 10000)
-   :tr       [0 0]
-   :ro       [0]
-   :v        [0 1]
-   :limbs
-   :behavior "walking"})
-
-(defn dot [v s])
-(defn inv [v]
-  (mapv - v))
-(defn add [u v]
-  (mapv + u v))
+(defn spiderLeg [socket]
+  (let [tr (m/multiply socket 3)]
+    (if (> (aget socket 1) 0)
+      tr (m/add tr, #js[-5 0]))
+    (doto (hiccup "path", {:d (str "M" socket " L" tr)})
+      (-> .-socket (set! socket))
+      (-> .-down (set! true))
+      (-> .-tr (set! tr)))))
 
 (defn spider []
-  (Spider. pose behavior)
-  (fn modify [rf]
-    (let [s (spi)]
-      (fn step [result x]
-        tr (add (dot (rot v) dt) tr)
-        (doseq [{:keys [appendage]} limbs]
-          (let [{:keys [down? tr]} appendage]
-            (if down?
-              (let [x (dot (inv v) dt)]
-                {:tr    ()
-                 :down? false})
-              (do
-                {:down? true})))
-          )))))
+  (let [s (doto (hiccup "g" {:stroke "black", :stroke-width 0.5, :stroke-linecap "round"})
+            (.appendChild (hiccup "ellipse" {:cx 2, :rx 2, :ry 1}))
+            (.appendChild (hiccup "ellipse" {:cx -2, :rx 3, :ry 2}))
+            (-> .-tr (set! #js[0 0]))
+            (-> .-rotGoal (set! #js[0]))
+            (-> .-rot (set! #js[0]))
+            (-> .-urgency (set! 0.5))
+            (-> .-size (set! (+ 0.5 (/ (rand) 2)))))]
+    (doseq [socket spiderLegSockets]
+      (.appendChild s (spiderLeg socket)))
+    s))
 
-(defn on-tick []
-  (doseq [animal world]
-    (step animal)))
+(defn deg2rad [x]
+  (/ (* math/PI x) 180))
 
+(defn updateSpider [s dt]
+  (let [dt (* dt (.-urgency s))]
+    ;; stay in the world
+    (cond (< (aget (.-tr s) 0) -60)
+          (doto s (-> .-rotGoal (set! #js[0]))
+                  (-> .-rot (set! #js[0])))
+          (< (aget (.-tr s) 1) -60)
+          (doto s (-> .-rotGoal (set! #js[90]))
+                  (-> .-rot (set! #js[90])))
+          (> (aget (.-tr s) 0) 60)
+          (doto s (-> .-rotGoal (set! #js[180]))
+                  (-> .-rot (set! #js[180])))
+          (> (aget (.-tr s) 1) 60)
+          (doto s (-> .-rotGoal (set! #js[270]))
+                  (-> .-rot (set! #js[270])))
 
-(defn -main [])
+          ;; randomization
+          (< (rand) 0.01)
+          (set! (.-rotGoal s) #js[(rand-int 360)])
+          (< (rand) 0.01)
+          (set! (.-urgency s) (rand)))
+
+    ;; rotate toward a goal
+    (let [drot (cond (> (aget (.-rotGoal s) 0) (+ (aget (.-rot s) 0) 5)) 5
+                     (< (aget (.-rotGoal s) 0) (- (aget (.-rot s) 0) 5)) -5
+                     :else 0)
+          dt (if (= 0 drot) dt (* 5 dt))]
+      (aset (.-rot s) 0 (+ (aget (.-rot s) 0) drot))
+      (set! (.-tr s) (m/add (.-tr s)
+                            (m/rotate #js[dt 0] (deg2rad (aget (.-rot s) 0)))))
+      (.setAttribute s "transform" (str "translate(" (.-tr s) ") rotate(" (.-rot s) ") scale(" (.-size s) ")"))
+      ;; TODO: feet shouldn't rotate when turning!
+      (doseq [leg (.-children s)
+              :when (.-tr leg)]
+        (set! (.-tr leg) (m/add (.-tr leg)
+                                (if (.-down leg)
+                                  #js[(- dt) 0]
+                                  #js[(* 4 dt) 0])))
+        (cond (> (aget (.-tr leg) 0) (if (> (aget (.-socket leg) 0) 0.5) 9 -5))
+              (set! (.-down leg) true)
+              (< (aget (.-tr leg) 0) (if (> (aget (.-socket leg) 0) 0.5) 5 -9))
+              (set! (.-down leg) false))
+        (.setAttribute leg "d" (str "M" (.-socket leg) " L" (.-tr leg)))))))
+
+(def world (js/document.getElementById "world"))
+
+(def lastTs (js/performance.now))
+
+(defn animate [ts]
+  (let [dt (/ (- ts lastTs) 50)]
+    (set! lastTs ts)
+    (doseq [child (.-children world)]
+      (updateSpider child dt))
+    (js/requestAnimationFrame animate)))
+
+(defn init []
+  (dotimes [i 50]
+    (.appendChild world (spider)))
+  (js/requestAnimationFrame animate))
+
+(when world
+  (init))
