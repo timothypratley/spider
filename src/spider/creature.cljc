@@ -1,6 +1,5 @@
 (ns spider.creature
-  (:require ["mathjs" :as m]
-            [clojure.math :as math]))
+  (:require [clojure.math :as math]))
 
 (defn deg2rad [x]
   (/ (* math/PI x) 180))
@@ -17,7 +16,8 @@
    :down   true})
 
 (defn spider []
-  {:tr      [0 0]
+  {:type    :spider
+   :tr      [0 0 0]
    :rot     [0]
    :rotGoal [0]
    :urgency 0.5
@@ -27,44 +27,44 @@
 
 (defn updateSpider [s dt]
   #_(let [dt (* dt (.-urgency s))]
-    ;; stay in the world
-    (cond (< (aget (.-tr s) 0) -60)
-          (doto s (-> .-rotGoal (set! #js[0]))
-                  (-> .-rot (set! #js[0])))
-          (< (aget (.-tr s) 1) -60)
-          (doto s (-> .-rotGoal (set! #js[90]))
-                  (-> .-rot (set! #js[90])))
-          (> (aget (.-tr s) 0) 60)
-          (doto s (-> .-rotGoal (set! #js[180]))
-                  (-> .-rot (set! #js[180])))
-          (> (aget (.-tr s) 1) 60)
-          (doto s (-> .-rotGoal (set! #js[270]))
-                  (-> .-rot (set! #js[270])))
+      ;; stay in the world
+      (cond (< (aget (.-tr s) 0) -60)
+            (doto s (-> .-rotGoal (set! [0]))
+                    (-> .-rot (set! [0])))
+            (< (aget (.-tr s) 1) -60)
+            (doto s (-> .-rotGoal (set! [90]))
+                    (-> .-rot (set! [90])))
+            (> (aget (.-tr s) 0) 60)
+            (doto s (-> .-rotGoal (set! [180]))
+                    (-> .-rot (set! [180])))
+            (> (aget (.-tr s) 1) 60)
+            (doto s (-> .-rotGoal (set! [270]))
+                    (-> .-rot (set! [270])))
 
-          ;; randomization
-          (< (rand) 0.01)
-          (set! (.-rotGoal s) #js[(rand-int 360)])
-          (< (rand) 0.01)
-          (set! (.-urgency s) (rand)))
+            ;; randomization
+            (< (rand) 0.01)
+            (set! (.-rotGoal s) [(rand-int 360)])
+            (< (rand) 0.01)
+            (set! (.-urgency s) (rand)))
 
-    ;; rotate toward a goal
-    (let [drot (cond (> (aget (.-rotGoal s) 0) (+ (aget (.-rot s) 0) 5)) 5
-                     (< (aget (.-rotGoal s) 0) (- (aget (.-rot s) 0) 5)) -5
-                     :else 0)
-          dt (if (= 0 drot) dt (* 5 dt))]
-      (aset (.-rot s) 0 (+ (aget (.-rot s) 0) drot))
-      (set! (.-tr s) (m/add (.-tr s)
-                            (m/rotate #js[dt 0] (deg2rad (aget (.-rot s) 0)))))
-      (.setAttribute s "transform" (str "translate(" (.-tr s) ") rotate(" (.-rot s) ") scale(" (.-size s) ")"))
-      ;; TODO: feet shouldn't rotate when turning!
-      (doseq [leg (.-children s)
-              :when (.-tr leg)]
-        (set! (.-tr leg) (m/add (.-tr leg)
-                                (if (.-down leg)
-                                  #js[(- dt) 0]
-                                  #js[(* 4 dt) 0])))
-        (cond (> (aget (.-tr leg) 0) (if (> (aget (.-socket leg) 0) 0.5) 9 -5))
-              (set! (.-down leg) true)
-              (< (aget (.-tr leg) 0) (if (> (aget (.-socket leg) 0) 0.5) 5 -9))
-              (set! (.-down leg) false))
-        (.setAttribute leg "d" (str "M" (.-socket leg) " L" (.-tr leg)))))))
+      ;; rotate toward a goal
+      (let [drot (cond (> (aget (.-rotGoal s) 0) (+ (aget (.-rot s) 0) 5)) 5
+                       (< (aget (.-rotGoal s) 0) (- (aget (.-rot s) 0) 5)) -5
+                       :else 0)
+            dt (if (= 0 drot) dt (* 5 dt))]
+        (aset (.-rot s) 0 (+ (aget (.-rot s) 0) drot))
+        (set! (.-tr s) (m/add (.-tr s)
+                              (m/rotate [dt 0] (deg2rad (aget (.-rot s) 0)))))
+        (.setAttribute s "transform" (str "translate(" (.-tr s) ") rotate(" (.-rot s) ") scale(" (.-size s) ")"))
+        ;; TODO: feet shouldn't rotate when turning!
+        (doseq [leg (.-children s)
+                :when (.-tr leg)]
+          (set! (.-tr leg) (m/add (.-tr leg)
+                                  (if (.-down leg)
+                                    [(- dt) 0]
+                                    [(* 4 dt) 0])))
+          (cond (> (aget (.-tr leg) 0) (if (> (aget (.-socket leg) 0) 0.5) 9 -5))
+                (set! (.-down leg) true)
+                (< (aget (.-tr leg) 0) (if (> (aget (.-socket leg) 0) 0.5) 5 -9))
+                (set! (.-down leg) false))
+          (.setAttribute leg "d" (str "M" (.-socket leg) " L" (.-tr leg)))))))

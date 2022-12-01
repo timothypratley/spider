@@ -1,8 +1,12 @@
 (ns spider.world
-  (:require [threeagent.core :as ta]))
+  (:require [spider.creature :as sc]
+            [threeagent.core :as ta]))
 
 (defonce world* (ta/atom {:t 0}))
 (defonce t (js/performance.now))
+
+(defn add-spider [world]
+  (update world :children conj (sc/spider)))
 
 (defn animate [ts]
   (let [dt (min (- ts t) 100)]
